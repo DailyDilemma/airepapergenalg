@@ -40,6 +40,10 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+# Eclipse Workspace
+.metadata
+.recommenders
+
 # Windows
 # =========================
 
