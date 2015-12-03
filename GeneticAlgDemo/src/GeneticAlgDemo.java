@@ -13,6 +13,8 @@ public class GeneticAlgDemo {
 	static final int POPULATION = 10;
 	static final int INTERVALS_PER_DAY = 96; // Each interval is 15 minutes.
 	static int evalResults[] = new int[POPULATION]; // Stores the fitness measure for each population member
+	static final int NUM_ROUNDS = 10000;
+	static final int THRESHOLD = 96;
 	
 	/**
 	 * @param args
@@ -20,14 +22,33 @@ public class GeneticAlgDemo {
 	public static void main(String[] args) {
 		
 		boolean population[][] = new boolean[POPULATION][INTERVALS_PER_DAY];
-		//System.out.println("Hello World!");			
+		int currentBest = 0;
 		
 		// Create a population of random schedules
-		initialize(population);				
-		//printPopulation(population, false);
+		initialize(population);		
+		//printPopulation(population, false, "After Initialization:");	
+
 		evaluate(population);
-		printPopulation(population, true);
-		population = selection(population);
+		printPopulation(population, true, "Initial Population: (Randomly Generated)");		
+					
+		for (int i=0; i<NUM_ROUNDS && currentBest<THRESHOLD; i++){
+				
+			currentBest = evalResults[indexOfBestFit()];
+			
+			System.out.println(String.format("Round %4d", i));
+			
+			population = selection(population);
+			//printPopulation(population, false, "After Selection:");
+			
+			crossover(population);
+			printPopulation(population, true, "After Crossover:");
+			
+			mutation(population);
+			printPopulation(population, true, "After Mutation:");
+			
+			evaluate(population);
+			printPopulation(population, true, "After Evaluation:");			
+		}
 	}
 	
 	public static void initialize(boolean[][] population) {
@@ -45,7 +66,15 @@ public class GeneticAlgDemo {
 		
 	}
 	
-	public static void printPopulation(boolean[][] population, boolean withScores) {
+	public static void printPopulation(boolean[][] population, boolean withScores, String message) {
+		
+		if (message.length() > 0) {
+			System.out.println(message);
+		}
+		
+		if (withScores) {
+			evaluate(population);
+		}
 		
 		// Initialize an array of randomized possible schedules
 		for (int i=0; i<POPULATION; i++) {
@@ -65,16 +94,28 @@ public class GeneticAlgDemo {
 			}
 		}		
 		
+		System.out.println();
+		
 	}
 
 	public static int fitnessFunction(boolean[] schedule) {
 		
 		int fitness = 0;
+		int intervalsSinceLastBreak = 0;
 		
 		for (int i=0; i<INTERVALS_PER_DAY; i++) {
+		
 			if (schedule[i]) {
 				fitness++;
+				intervalsSinceLastBreak++;
+			} else {
+				intervalsSinceLastBreak = 0;
 			}
+			
+			if (intervalsSinceLastBreak > 8) {
+				fitness--;
+			}
+						
 		}
 				
 		return fitness;
@@ -129,12 +170,12 @@ public class GeneticAlgDemo {
 		}
 		
 		// Put the best fit solution in first and remove it from the list
-		newPopulation[0] = population[bestFitPos];
+		System.arraycopy(population[bestFitPos], 0, newPopulation[0], 0, INTERVALS_PER_DAY);
 		schedPos.remove(bestFitPos);
 		
 		// Pick the next 4 "mates" randomly from the remaining population
 		for (i=1; i<(POPULATION/2); i++) {
-			selectedPos = (int) (Math.random() * (schedPos.size() + 1));
+			selectedPos = (int) (Math.random() * schedPos.size());
 			newPopulation[i] = population[selectedPos];
 			schedPos.remove(selectedPos);
 		}		
@@ -145,19 +186,53 @@ public class GeneticAlgDemo {
 	
 	public static void crossover(boolean[][] population) {
 		
-		int crossoverPoint = 0;
-		int i;
+		// Create new population members by breeding the most fit member 
+		// with the 4 other members chosen at random
+		population[5] = crossMembers(population[0], population[1]);
+		population[6] = crossMembers(population[0], population[2]);
+		population[7] = crossMembers(population[0], population[3]);
+		population[8] = crossMembers(population[0], population[4]);
 		
-		crossoverPoint = (int)(Math.random() * INTERVALS_PER_DAY);
+		// Breed 2 of the randomly chosen members with each other
+		population[9] = crossMembers(population[1], population[4]);
 		
-		// Create the last half of the next generation by breeding the elite/best fit population
-		// member with each of the 
-		for (i=(POPULATION/2); i<POPULATION; i++) {
+	}
+	
+	public static boolean[] crossMembers(boolean[] member1, boolean[] member2) {
+		
+		boolean[] newMember = new boolean[INTERVALS_PER_DAY];
+		
+		for (int i=0; i<INTERVALS_PER_DAY; i++) {
+			if (Math.random() < 0.5) {
+				newMember[i] = member1[i];
+			} else {
+				newMember[i] = member2[i];
+			}
+		}
+		
+		return newMember;
+		
+	}
+	
+	public static void mutation(boolean[][] population) {
+		
+		int posToMutate = 0;
+		
+		// for each member there is a 50% chance that one of it's chromosomes will
+		// be selected for mutation (the best fit member is never mutated)
+		for (int i=1; i<POPULATION; i++) {
+			
+			if (Math.random() < 0.5) {
+				posToMutate = (int)(Math.random() * INTERVALS_PER_DAY);							
+				if (population[i][posToMutate]) {
+					population[i][posToMutate] = false;
+				} else {
+					population[i][posToMutate] = true;					
+				}
+			}			
 			
 		}
 		
 	}
-	
-	public static boolean[] crossMembers(boolean[] member1, boolean[2])
 	
 }
